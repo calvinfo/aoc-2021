@@ -8,7 +8,7 @@ fn main() {
     let sol1 = part1(v);
     println!("Part 1: {}", sol1);
 
-    let v2 = load(String::from("./input-test"));
+    let v2 = load(String::from("./input"));
     let sol2 = part2(v2);
     println!("Part 2: {}", sol2);
 }
@@ -33,7 +33,7 @@ pub struct Matrix {
 }
 
 impl Matrix {
-    fn from_str(s: String) -> Matrix {
+    fn from_str(s: &String) -> Matrix {
         let v = s.lines().map(|x| String::from(x)).collect();
         return Matrix { rows: v };
     }
@@ -84,11 +84,59 @@ impl Matrix {
     }
 }
 
+#[derive(Debug)]
+pub enum SearchType {
+    Most,
+    Least
+}
+
+pub fn binary(s: String) -> u32 {
+    return s.chars().fold(0, |acc, x| { 
+        let mut res = 2 * acc;
+        if x == '1' {
+            res += 1;
+        }
+        return res;
+    })
+}
+
+pub fn search(m: Matrix, s: SearchType) -> u32 {
+    let res = search_n(m, s, 0);
+    return binary(String::from(res.rows.into_iter().next().unwrap()));
+}
+
+pub fn search_n(m: Matrix, s: SearchType, n: usize) ->  Matrix {
+    let bit = char::from_digit(m.gamma_bit(n), 10);
+
+    let rows: Vec<String> = m.rows.into_iter().filter(|x| {
+        let c = x.chars().nth(n);
+        match s {
+            SearchType::Most if c == bit => true,
+            SearchType::Least if c != bit => true,
+            _ => false
+        }
+    }).collect();
+
+    let result = Matrix{ rows: rows };
+
+    if result.rows.len() == 1 || n > result.size() {
+        return result;
+    }
+
+    return search_n(result, s, n+1);
+}
+
+
 pub fn part1(input: String) -> u32 {
-    let m = Matrix::from_str(input);
+    let m = Matrix::from_str(&input);
     return m.gamma() * m.epsilon();
 }
 
-pub fn part2(input: String) -> i32 {
-    return 0;
+pub fn part2(input: String) -> u32 {
+    let m = Matrix::from_str(&input);
+    let oxygen = search(m, SearchType::Most);
+    let m2 = Matrix::from_str(&input);
+    let co2 = search(m2, SearchType::Least);
+
+    return oxygen * co2;
 }
