@@ -8,7 +8,7 @@ fn main() {
     let sol1 = part1(v);
     println!("Part 1: {}", sol1);
 
-    let v2 = load(String::from("./input"));
+    let v2 = load(String::from("./input-test"));
     let sol2 = part2(v2);
     println!("Part 2: {}", sol2);
 }
@@ -26,9 +26,6 @@ pub fn load(filename: String) -> String {
     }
 
     content
-        // .lines()
-        // .map(|line| Instruction::from_str(String::from(line)))
-        // .collect()
 }
 
 pub struct Matrix {
@@ -37,12 +34,11 @@ pub struct Matrix {
 
 impl Matrix {
     fn from_str(s: String) -> Matrix {
-        let v = s.lines().collect::<Result<_, _>>().unwrap();
-
+        let v = s.lines().map(|x| String::from(x)).collect();
         return Matrix { rows: v };
     }
 
-    fn gamma(&self) -> usize {
+    fn gamma(&self) -> u32 {
         let mut result = 0;
         for i in 0..self.size() {
             result *= 2;
@@ -55,7 +51,7 @@ impl Matrix {
         return self.rows[0].len();
     }
 
-    fn gamma_bit(&self, n: usize) -> usize {
+    fn gamma_bit(&self, n: usize) -> u32 {
         let mut ones = 0;
         let mut zeros = 0;
 
@@ -76,13 +72,21 @@ impl Matrix {
         return 1;
     }
 
-    fn epsilon(&self) -> usize {
-        return 0;
+    fn epsilon(&self) -> u32 {
+        let mut result = 0;
+        for i in 0..self.size() {
+            result *= 2;
+            if self.gamma_bit(i) == 0 {
+                result += 1
+            }
+        }
+        return result;
     }
 }
 
-pub fn part1(input: String) -> i32 {
-    return 0;
+pub fn part1(input: String) -> u32 {
+    let m = Matrix::from_str(input);
+    return m.gamma() * m.epsilon();
 }
 
 pub fn part2(input: String) -> i32 {
