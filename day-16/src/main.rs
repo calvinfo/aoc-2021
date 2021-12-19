@@ -4,15 +4,18 @@ use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fs::File;
 use std::io::Read;
+use std::str::Chars;
+
+static mut SUM: u32 = 0;
 
 fn main() {
-    let v = load(String::from("./input-test"));
+    let v = load(String::from("./input"));
     let sol1 = part1(&v);
     println!("Part 1: {}", sol1);
 
-    let v2 = load(String::from("./input"));
-    let sol2 = part2(&v2);
-    println!("Part 2: {}", sol2);
+    // let v2 = load(String::from("./input"));
+    // let sol2 = part2(&v2);
+    // println!("Part 2: {}", sol2);
 }
 
 pub fn load(filename: String) -> String {
@@ -70,53 +73,136 @@ pub fn hex_to_bin(s: &str) -> String {
     res
 }
 
+trait Packet {
+    fn version(&self) -> u8;
+    fn typ(&self) -> u8;
+    fn from_it(it: &mut Chars, version: u8, typ: u8) -> Self;
+}
+
+
 struct LiteralPacket {
-    version: u8,
-    typ: u8,
-    value: u64,
+}
+
+struct OperatorPacket {
 }
 
 impl LiteralPacket {
-    pub fn from_str(s: &str) -> LiteralPacket {
-        let bin_str = hex_to_bin(s);
-        println!("{}", bin_str);
-
-        let version = &bin_str[0..3];
-        let typ = &bin_str[3..6];
-        let i = 6;
-
-        let mut it = bin_str.chars().skip(i);
+    pub fn from_it(it: &mut Chars, version: u8) -> ParseResult {
         let mut val_digits = String::from("");
         let mut finished = false;
+        let mut bits = 0;
+
         while !finished {
             match it.next() {
-                Some(i) if i == '1' => {},
-                Some(i) if i == '0' => { finished = true },
-                None => { finished = true},
-                _ => { panic!("error") },
+                Some(i) if i == '1' => {}
+                Some(i) if i == '0' => finished = true,
+                None => finished = true,
+                _ => {
+                    panic!("error")
+                }
             }
-
             for _ in 0..4 {
                 val_digits.push(it.next().unwrap());
             }
+            bits += 5;
         }
 
-
-        LiteralPacket {
-            version: bin_to_num(&version) as u8,
-            typ: bin_to_num(&typ) as u8,
-            value: bin_to_num(&val_digits) as u64,
+        ParseResult{
+            packets: 1,
+            bits: bits,
         }
     }
 }
 
-struct OperatorPacket {}
+impl OperatorPacket {
+    pub fn from_it(it: &mut Chars, version: u8, typ: u8) -> ParseResult {
+        let mut bits = 0;
+        let mut packets = 0;
+        let len_id = it.next().unwrap();
+        if len_id == '0' {
+            let mut val_digits = String::from("");
+            for _ in 0..15 {
+                val_digits.push(it.next().unwrap());
+            }
+            let mut bit_count = bin_to_num(&val_digits);
+            while bit_count > 0 {
+                let result = PacketParser::parse(it);
+                if bit_count < result.bits {
+                    break;
+                }
+                bit_count -= result.bits;
+                bits += result.bits;
+                packets += result.packets;
+            }
+        }
+
+        if len_id == '1' {
+            let mut val_digits = String::from("");
+            for _ in 0..11 {
+                val_digits.push(it.next().unwrap());
+            }
+            let mut packet_count = bin_to_num(&val_digits);
+            while packet_count > 0 {
+                let result = PacketParser::parse(it);
+                packet_count -= 1;
+                bits += result.bits;
+                packets += result.packets;
+            }
+        }
+
+        ParseResult{
+            packets: packets,
+            bits: bits,
+        }
+    }
+}
+
+struct PacketParser {}
+
+struct ParseResult {
+    packets: u32,
+    bits: u32,
+    // versions: Vec<u8>
+}
+
+impl PacketParser {
+    pub fn parse(it: &mut Chars) -> ParseResult {
+        // Parse header to figure out what's next..
+        let mut version_str = String::from("");
+        for _ in 0..3 {
+            version_str.push(it.next().unwrap());
+        }
+
+        let mut typ_str = String::from("");
+        for _ in 0..3 {
+            typ_str.push(it.next().unwrap());
+        }
+
+        let version = bin_to_num(&version_str);
+        let typ = bin_to_num(&typ_str);
+        println!("{}", version);
+
+        let res = match typ {
+            4 => {
+                LiteralPacket::from_it(it, version as u8)
+            } // literal
+            _ => {
+                OperatorPacket::from_it(it, version as u8, typ as u8)
+            }
+        };
+        ParseResult{packets: res.packets + 1, bits: res.bits + 6}
+    }
+}
 
 pub fn part1(input: &String) -> u32 {
-    let packet = LiteralPacket::from_str(&"D2FE28");
-    println!("{}", packet.version);
-    println!("{}", packet.typ);
-    println!("{}", packet.value);
+    let bin_str = hex_to_bin(input);
+    let mut chars = bin_str.chars();
+    PacketParser::parse(&mut chars);
+
+    // let packet = LiteralPacket::from_str(&"D2FE28");
+    // println!("{}", packet.version);
+    // println!("{}", packet.typ);
+    // println!("{}", packet.value);
     0
 }
 
